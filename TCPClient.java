@@ -8,51 +8,53 @@ public class TCPClient {
     private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     public static void main(String[] args) {
-        String hostname = "3.109.158.47";
-        // "localhost"; // or use the server's IP address
+        String hostname = "3.109.158.47"; // Replace with your server IP
         int port = 80;
         AtomicBoolean running = new AtomicBoolean(false);
+
         try (
-                Socket socket = new Socket(hostname, port);
-                OutputStream output = socket.getOutputStream();
-                PrintWriter writer = new PrintWriter(output, true);
-                BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in))) {
+            Socket socket = new Socket(hostname, port);
+            OutputStream output = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(output, true);
+            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in))
+        ) {
             running.set(true);
+
+            // Heartbeat thread
             executor.submit(() -> {
                 try {
-                    while (true) {
-                        Thread.sleep(30000);
-                        if (running.get()) {
-                            writer.write(0x01);
-                            writer.flush();
-                            System.out.println("Heartbeat sent");                            
-                        } else {
-                            return;
-                        }
+                    while (running.get()) {
+                        Thread.sleep(30000); // 30 seconds
+                        output.write(0x01);  // Send raw byte
+                        output.flush();
                     }
                 } catch (Exception e) {
-                    System.out.println("error: " + e.getMessage());
+                    System.out.println("Heartbeat error: " + e.getMessage());
                 }
             });
 
             System.out.println("Connected to the server. Type messages to send:");
-            var message = "";
-            do {
+            String message;
+            while (true) {
                 System.out.print("message for server: ");
                 message = consoleReader.readLine();
 
-                if ("exit".equals(message)) {
+                if (message == null || "exit".equalsIgnoreCase(message)) {
                     break;
                 }
 
-                writer.println(message);
-            } while (message != null);
+                writer.println(message); // Send message
+            }
+
+            running.set(false);
             System.out.println("Disconnected from the client.");
 
         } catch (UnknownHostException ex) {
             System.out.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {
             System.out.println("I/O error: " + ex.getMessage());
+        } finally {
+            running.set(false);
         }
     }
 }

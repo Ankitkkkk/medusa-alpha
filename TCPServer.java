@@ -13,7 +13,7 @@ public class TCPServer {
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                System.out.println("New client connected: " + socket.getInetAddress());
+                System.out.println("New client connected: " + socket.getRemoteSocketAddress());
                 executor.submit(() -> handleClient(socket));
             }
 
