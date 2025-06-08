@@ -24,6 +24,8 @@ public class TCPClient {
                         Thread.sleep(30000);
                         if (running.get()) {
                             writer.write(0x01);
+                            writer.flush();
+                            System.out.println("Heartbeat sent");                            
                         } else {
                             return;
                         }
