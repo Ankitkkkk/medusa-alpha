@@ -1,4 +1,4 @@
 #!/bin/bash
 
-javac TCPClient.java
-java TCPClient
+javac HolePunchClient.java
+java HolePunchClient
