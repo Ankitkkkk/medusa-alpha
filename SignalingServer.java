@@ -25,15 +25,18 @@ public class SignalingServer {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
             String hello = "";
+            String ipProxy = "";
             while (true) {
                 hello = in.readLine();
                 System.out.println("data/port recieved: " + hello);
                 if (hello.startsWith("PROXY")) {
+                    ipProxy = hello.split(" ")[2];
                     continue;
                 } else break;
             }
             int port = Integer.parseInt(hello.split(":")[1]);
-            String ip = socket.getInetAddress().getHostAddress();
+            String ip = ipProxy;
+            // socket.getInetAddress().getHostAddress();
 
             ClientInfo client = new ClientInfo(socket, ip, port);
 
