@@ -1,4 +1,4 @@
 #!/bin/bash
 
-javac HolePunchClient.java
-java HolePunchClient
+javac TimestampEchoServer.java
+java TimestampEchoServer
