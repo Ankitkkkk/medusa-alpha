@@ -3,65 +3,70 @@ import java.net.*;
 import java.util.concurrent.*;
 
 public class HolePunchClient {
-    private static final int TIMEOUT_MS = 5000;
+    private static final int TIMEOUT_MS = 10000; // 10 seconds
     private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     public static void main(String[] args) throws Exception {
-        String serverIp = "13.204.76.236";
+        String serverIp = "13.204.76.236"; // your signaling server
         int serverPort = 80;
-        int p2pPort = 50000 + (int) (Math.random() * 1000); // Pick an arbitrary port
 
-        // Open a DatagramSocket early to bind NAT
-        Socket punchSocket = new Socket();
-        punchSocket.bind(new InetSocketAddress(p2pPort));
+        int p2pPort = 50000 + (int) (Math.random() * 1000); // random port for P2P
 
+        // Connect to signaling server
         Socket serverSocket = new Socket(serverIp, serverPort);
         BufferedReader in = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
         PrintWriter out = new PrintWriter(serverSocket.getOutputStream(), true);
 
-        // Tell server our local port (so we can reuse it)
+        // Announce ourselves
         out.println("HELLO:" + p2pPort);
 
         String response = in.readLine();
         if (response == null || !response.startsWith("PEER:")) {
             System.err.println("Invalid server response");
+            serverSocket.close();
             return;
         }
 
+        // Parse peer IP and port
         String[] parts = response.split(":");
         String peerIp = parts[1];
         int peerPort = Integer.parseInt(parts[2]);
         System.out.println("Got peer info: " + peerIp + ":" + peerPort);
 
-        // Set up server socket to listen on the same port
+        // Set up listener (for incoming peer connection)
         ServerSocket listener = new ServerSocket(p2pPort);
         listener.setSoTimeout(TIMEOUT_MS);
 
-        // Attempt to connect to peer
-        Future<Socket> connectionFuture = executor.submit(() -> {
+        // Simultaneously try to connect to peer
+        Future<Socket> outgoingFuture = executor.submit(() -> {
             try {
+                Thread.sleep(500); // allow listener to be ready
                 Socket socket = new Socket();
-                socket.bind(new InetSocketAddress(p2pPort));
+                socket.bind(new InetSocketAddress(p2pPort)); // bind to same port
                 socket.connect(new InetSocketAddress(peerIp, peerPort), TIMEOUT_MS);
                 return socket;
-            } catch (IOException e) {
+            } catch (Exception e) {
+                e.printStackTrace();
                 return null;
             }
         });
 
+        // Accept incoming connection
         Socket peerSocket = null;
-
-        // Simultaneously accept connection from peer
         try {
             peerSocket = listener.accept();
-        } catch (SocketTimeoutException e) {
-            // timeout while accepting
+        } catch (SocketTimeoutException ignored) {}
+
+        // If accept failed, use outgoing connection
+        if (peerSocket == null) {
+            peerSocket = outgoingFuture.get(TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } else {
+            // Cancel outgoing connection if accept succeeded
+            outgoingFuture.cancel(true);
         }
 
-        // Wait for outbound connection attempt
-        if (peerSocket == null) {
-            peerSocket = connectionFuture.get(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        }
+        listener.close();
+        serverSocket.close();
 
         if (peerSocket != null) {
             System.out.println("✅ Connected to peer: " + peerSocket.getRemoteSocketAddress());
@@ -69,26 +74,31 @@ public class HolePunchClient {
             BufferedReader peerIn = new BufferedReader(new InputStreamReader(peerSocket.getInputStream()));
             PrintWriter peerOut = new PrintWriter(peerSocket.getOutputStream(), true);
 
+            // Read incoming messages from peer
             executor.submit(() -> {
                 try {
                     String line;
                     while ((line = peerIn.readLine()) != null) {
                         System.out.println("[Peer]: " + line);
+                        System.out.print("You: ");
                     }
-                } catch (IOException ignored) {}
+                } catch (IOException e) {
+                    System.out.println("Peer disconnected.");
+                }
             });
 
+            // Send messages to peer
             BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
             String msg;
             while ((msg = console.readLine()) != null) {
                 peerOut.println(msg);
             }
+
+            peerSocket.close();
         } else {
             System.err.println("❌ Failed to connect to peer.");
         }
 
-        punchSocket.close();
-        listener.close();
-        serverSocket.close();
+        executor.shutdownNow();
     }
 }
