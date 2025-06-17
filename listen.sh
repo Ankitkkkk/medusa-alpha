@@ -1,4 +1,4 @@
 #!/bin/bash
 
-javac TimestampEchoServer.java
-java TimestampEchoServer
+javac TwoPortP2PClient.java
+java TwoPortP2PClient
