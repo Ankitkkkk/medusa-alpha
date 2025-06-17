@@ -8,7 +8,7 @@ public class HolePunchClient {
 
     public static void main(String[] args) throws Exception {
         String serverIp = "13.204.76.236";
-        int serverPort = 6789;
+        int serverPort = 80;
         int p2pPort = 50000 + (int) (Math.random() * 1000); // Pick an arbitrary port
 
         // Open a DatagramSocket early to bind NAT

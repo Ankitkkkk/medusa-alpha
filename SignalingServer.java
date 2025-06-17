@@ -25,6 +25,7 @@ public class SignalingServer {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
             String hello = in.readLine(); // Expecting "HELLO:<port>"
+            System.out.println("data/port recieved: " + hello);
             int port = Integer.parseInt(hello.split(":")[1]);
             String ip = socket.getInetAddress().getHostAddress();
 
