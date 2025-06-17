@@ -24,8 +24,14 @@ public class SignalingServer {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 
-            String hello = in.readLine(); // Expecting "HELLO:<port>"
-            System.out.println("data/port recieved: " + hello);
+            String hello = "";
+            while (true) {
+                hello = in.readLine();
+                System.out.println("data/port recieved: " + hello);
+                if (hello.startsWith("PROXY")) {
+                    continue;
+                } else break;
+            }
             int port = Integer.parseInt(hello.split(":")[1]);
             String ip = socket.getInetAddress().getHostAddress();
 
